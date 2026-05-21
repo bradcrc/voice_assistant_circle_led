@@ -2,6 +2,7 @@ esphome:
   name: voice-assist-circle
   friendly_name: Voice Assist Circle
 
+
 esp32:
   board: esp32-s3-devkitc-1
   variant: esp32s3  
@@ -53,12 +54,18 @@ api:
 
 ###############################################################################################################################
 
+output:
+  - platform: gpio
+    pin: 
+      number: GPIO01
+      allow_other_uses: true
+    id: set_low_speaker  # Prevents popping on speaker start
+
 audio_file:
   - id: alert_sound
     file:
       type: local
       path: "audio/pop.mp3"
-
 
 i2s_audio:
   - id: mic_i2s
@@ -66,7 +73,7 @@ i2s_audio:
     i2s_bclk_pin: GPIO05 ###  SCK
 
   - id: spk_i2s
-    i2s_lrclk_pin: GPIO06 ## LRC
+    i2s_lrclk_pin: GPIO06 ## LRC 
     i2s_bclk_pin: GPIO07 ## BCLK
 
 microphone:
@@ -78,15 +85,16 @@ microphone:
     channel: right  
     pdm: false
 
-
 speaker:
   - platform: i2s_audio
     id: big_speaker
     i2s_audio_id: spk_i2s
-    i2s_dout_pin: GPIO17  
+    i2s_dout_pin: 
+      number: GPIO01
+      allow_other_uses: true
     dac_type: external
-    channel: mono
-
+    channel: stereo
+ 
 
   - platform: mixer
     id: mixer_speaker_id
@@ -104,56 +112,52 @@ speaker:
     id: announcement_spk_resampling_input
     output_speaker: announcement_spk_mixer_input
 
-
-
 media_player:
    - platform: speaker
      id: esps3_media_player
-     name: ESP Media Player
-
+     name: VA Circle Media Player
 
      announcement_pipeline:
        speaker: announcement_spk_resampling_input 
        num_channels: 1
        format: MP3
 
-
      media_pipeline:
        speaker: media_spk_resampling_input
        format: MP3
-       num_channels: 1
-
+       num_channels: 2
 
      on_announcement:
        - logger.log: "** MP Announcing! ** "
+       - light.turn_off: led_circle  
+       - delay: 50ms         
        - light.turn_on:
            id: led_circle           
-           brightness: 50%
+           brightness: 90%
            effect: "Talking Swirl"
 
      on_play:
-       - logger.log: "** MP Playback started! **"              
-       #- light.turn_on:
-           #id: led_circle           
-           #red: 0%
-           #green: 0%
-           #blue: 0%
-           #brightness: 40%
-           #effect: "Random X"
-
+       - logger.log: "** MP Playback started! **"   
+       - delay: 150ms             
        - light.turn_on:
            id: led_circle           
-           effect: "Listening Swirl"
-           red: 0%
-           green: 100%
-           blue: 100%
+           red: 100%
+           green: 80%
+           blue: 60%
            brightness: 50%
-            
+           effect: "Twinkly"
 
+     on_pause:            
+       - logger.log: "** MP Playback PAUSED! ** "
+       - light.turn_off: led_circle
 
      on_idle:
        - logger.log: "** MP Playback finished! ** "
        - light.turn_off: led_circle
+
+
+
+
 
 
 
@@ -162,14 +166,11 @@ media_player:
 voice_assistant:
   id: assist
   microphone: mic
-
   micro_wake_word: mww
-
   noise_suppression_level: 2
   auto_gain: 31dBFS
   volume_multiplier: 3.0
   media_player: esps3_media_player  
-
 
   on_error:
     - logger.log: "** VA ERROR **"    
@@ -177,11 +178,11 @@ voice_assistant:
     - delay: 1s      
     - light.turn_on:
         id: led_circle           
-        red: 100%
+        red: 70%
         green: 0%
         blue: 0%
         brightness: 40%
-        effect: "Fast Pulse"
+        effect: "Error Swirl"
     - delay: 3s
     - light.turn_off:
         id: led_circle 
@@ -219,12 +220,13 @@ switch:
     id: mute
     name: mute
     optimistic: true
+
     on_turn_on: 
       - micro_wake_word.stop:
       - voice_assistant.stop:
       - light.turn_on:
           id: led_circle           
-          red: 100%
+          red: 60%
           green: 0%
           blue: 0%
           brightness: 40%
@@ -232,16 +234,17 @@ switch:
       - delay: 2s
       - light.turn_off:
           id: led_circle
+
     on_turn_off:
       - micro_wake_word.start:
       - light.turn_on:
           id: led_circle           
           red: 0%
           green: 100%
-          blue: 0%
-          brightness: 50%
+          blue: 20%
+          brightness: 60%
           effect: "Single Scan"
-      - delay: 2s
+      - delay: 3s
       - light.turn_off:
           id: led_circle 
 
@@ -264,6 +267,13 @@ micro_wake_word:
       id: okay_nabu_model
     - model: hey_jarvis
       id: hey_jarvis_model
+    - model: alexa
+      id: alexa
+    - model: "https://raw.githubusercontent.com/esphome/micro-wake-word-models/refs/heads/main/models/v2/experiments/okay_computer.json"
+      id: okay_computer
+    - model: "https://raw.githubusercontent.com/esphome/micro-wake-word-models/refs/heads/main/models/v2/experiments/hey_home_assistant.json"
+      id: hey_home_assistant
+
 
   on_wake_word_detected:
     - logger.log: "** WAKE WORD DETECTED**"       
@@ -272,20 +282,14 @@ micro_wake_word:
 
     - media_player.speaker.play_on_device_media_file:
         media_file: alert_sound
-        announcement: false
-
-
-    - delay: 500ms             
+        announcement: False
+    - delay: 450ms    
+    - light.turn_off: led_circle                    
+    - delay: 50ms        
     - light.turn_on:
         id: led_circle           
         effect: "Listening Swirl"
-        red: 0%
-        green: 100%
-        blue: 100%
-        brightness: 50%
-        
-
-
+        brightness: 90%
 
 light:
   - platform: esp32_rmt_led_strip
@@ -293,18 +297,16 @@ light:
     rgb_order: GRB
     pin: GPIO48
     num_leds: 25
-
     chipset: ws2812
     name: "light Ring"
 
     effects:
       - pulse:
-      - pulse:
           name: "Fast Pulse"
           transition_length: 0.45s
           update_interval: 0.45s
           min_brightness: 0%
-          max_brightness: 100%
+          max_brightness: 50%
           
       - pulse:
           name: "Slow Pulse"
@@ -320,34 +322,17 @@ light:
           min_brightness: 0%
           max_brightness: 100%
 
-      # Random color and interval good for music
-      - random:  
       - random:
-          name: "Random X"
-          transition_length: 3s
-          update_interval: 4s
+          name: "Random Colors"
+          transition_length: 1s
+          update_interval: 2s
 
       - addressable_color_wipe:
-      - addressable_color_wipe:
-          name: Color Wipe Effect With Custom Values
+          name: "Listening Swirl"
           colors:
             - red: 0%
-              green: 60%
-              blue: 60%
-              num_leds: 15
-              gradient: true
-            - red: 0%
-              green: 0%
-              blue: 0%
-              num_leds: 1
-          add_led_interval: 100ms
-          reverse: false
-      - addressable_color_wipe:
-          name: Listening Swirl
-          colors:
-            - red: 0%
-              green: 60%
-              blue: 60%
+              green: 80%
+              blue: 80%
               num_leds: 10
               gradient: true
             - red: 0%
@@ -360,17 +345,17 @@ light:
       - addressable_color_wipe:
           name: Talking Swirl
           colors:
-            - red: 60%
+            - red: 50%
               green: 0%
-              blue: 60%
-              num_leds: 14
+              blue: 80%
+              num_leds: 12
               gradient: true
             - red: 0%
               green: 0%
               blue: 0%
-              num_leds: 10             
+              num_leds: 12             
           add_led_interval: 70ms
-          reverse: false
+          reverse: True
 
       - addressable_color_wipe:
           name: Error Swirl
@@ -384,29 +369,40 @@ light:
               green: 0%
               blue: 0%
               num_leds: 10             
-          add_led_interval: 30ms
-          reverse: false
+          add_led_interval: 50ms
+          reverse: True
 
       - addressable_color_wipe:
-          name: Swirl
+          name: Timer
           colors:
-            - num_leds: 14
+            - red: 100%
+              green: 100%
+              blue: 100%
+              num_leds: 1
               gradient: true
             - red: 0%
               green: 0%
               blue: 0%
-              num_leds: 10             
-          add_led_interval: 70ms
+              num_leds: 23            
+          add_led_interval: 1000ms
           reverse: false
 
-      - addressable_scan:
+      - flicker:
+          name: Flicker Effect
+          alpha: 95%
+          intensity: 1.5%
+
       - addressable_scan:
           name: Single Scan
           move_interval: 30ms
           scan_width: 1
 
+      - addressable_rainbow:
+          name: Rainbow Effect
+          speed: 12
+          width: 24
+
       - addressable_twinkle:
-      - addressable_twinkle:
-          name: Twinkle Effect With Custom Values
+          name: Twinkly
           twinkle_probability: 5%
           progress_interval: 4ms
