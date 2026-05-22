@@ -1,4 +1,4 @@
-![Alt text](voice_assistant_circle_LED_wiring.jpg)
+![Alt text](thumbnail.jpg)
 
 #Voice Assistant Device for Home Assistant with Circle LED
 
