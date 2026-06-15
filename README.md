@@ -11,9 +11,22 @@ Simple basic puck voice assistant for Home Assistant.
 
 
 ## Required Parts
-![Parts List](parts_list.jpg)
+![Parts List](images/parts_list.jpg)
 
 
 
 ## Wiring
-![Wiring](voice_assistant_circle_LED_wiring.jpg)
+![Wiring](images/voice_assistant_circle_LED_wiring.jpg)
+
+Wiring for the device.
+
+
+## Assembly
+![assembly](images/assembly.jpg)
+
+The 3d printed parts are assembled as in this image.
+
+
+![Wiring](images/inside.jpg)
+
+The components are crammed into the small case.  It's a tight fit.
