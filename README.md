@@ -1,13 +1,13 @@
 # Voice Assistant Device for Home Assistant with Circle LED
 
-![Voice Assistant Device](thumbnail.jpg)
+![Voice Assistant Device](images/thumbnail.jpg)
 
 Simple basic puck voice assistant for Home Assistant.  
 
-[Demo Video](https://youtu.be/T_yN41CJpmI)
+Watch a [Demo Video](https://youtu.be/T_yN41CJpmI)
 
 
-[STL Files](https://www.thingiverse.com/thing:7357076)
+3D Printing - [STL Files](https://www.thingiverse.com/thing:7357076)
 
 
 ## Required Parts
