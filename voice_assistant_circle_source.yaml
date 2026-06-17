@@ -1,6 +1,15 @@
 esphome:
-  name: voice-assist-circle
-  friendly_name: Voice Assist Circle
+  name: voice-assist-circle2
+  friendly_name: Voice  Assist Circle2
+
+  on_boot:
+    priority: -100.0 
+    then:
+      - delay: 12s 
+      - logger.log: "** Startup Complete ** "      
+      - media_player.speaker.play_on_device_media_file:
+          media_file: startup_sound
+          announcement: False
 
 
 esp32:
@@ -26,10 +35,8 @@ psram:
   mode: octal
   speed: 80MHz
 
-# Enable logging
 logger:
 
-# Allow Over-The-Air updates
 ota:
 - platform: esphome
 
@@ -37,8 +44,6 @@ wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
 
-
-# Enable Home Assistant API
 api:
   on_client_connected:
         then:
@@ -49,23 +54,41 @@ api:
         then:
           - voice_assistant.stop: 
 
-
-
-
-###############################################################################################################################
+globals:
+  - id: light_effect
+    type: int
+    restore_value: no
+    initial_value: '0'
 
 output:
   - platform: gpio
     pin: 
-      number: GPIO01
+      number: GPIO10
       allow_other_uses: true
     id: set_low_speaker  # Prevents popping on speaker start
 
+
+
+
+
+
+###############################################################################################################################
 audio_file:
-  - id: alert_sound
+  - id: wake_sound
     file:
       type: local
       path: "audio/pop.mp3"
+
+  - id: startup_sound
+    file:
+      type: local
+      path: "audio/start10.mp3"
+
+  - id: error_sound
+    file:
+      type: local
+      path: "audio/error16.mp3"
+
 
 i2s_audio:
   - id: mic_i2s
@@ -73,27 +96,28 @@ i2s_audio:
     i2s_bclk_pin: GPIO05 ###  SCK
 
   - id: spk_i2s
-    i2s_lrclk_pin: GPIO06 ## LRC 
-    i2s_bclk_pin: GPIO07 ## BCLK
+    i2s_lrclk_pin: GPIO12 ## LRC 
+    i2s_bclk_pin: GPIO11 ## BCLK
 
 microphone:
   - platform: i2s_audio
     id: mic
     i2s_audio_id: mic_i2s
     adc_type: external        
-    i2s_din_pin: GPIO16 ### SD
+    i2s_din_pin: GPIO06 ### SD
     channel: right  
     pdm: false
+
 
 speaker:
   - platform: i2s_audio
     id: big_speaker
     i2s_audio_id: spk_i2s
     i2s_dout_pin: 
-      number: GPIO01
+      number: GPIO10
       allow_other_uses: true
     dac_type: external
-    channel: stereo
+    channel: mono
  
 
   - platform: mixer
@@ -112,57 +136,80 @@ speaker:
     id: announcement_spk_resampling_input
     output_speaker: announcement_spk_mixer_input
 
+
+
+
 media_player:
    - platform: speaker
-     id: esps3_media_player
-     name: VA Circle Media Player
+     id: circle2_media_player
+     name: Puck2 Media Player
 
      announcement_pipeline:
        speaker: announcement_spk_resampling_input 
        num_channels: 1
        format: MP3
 
+
      media_pipeline:
        speaker: media_spk_resampling_input
        format: MP3
        num_channels: 2
 
+
      on_announcement:
        - logger.log: "** MP Announcing! ** "
-       - light.turn_off: led_circle  
-       - delay: 50ms         
        - light.turn_on:
            id: led_circle           
-           brightness: 90%
-           effect: "Talking Swirl"
+           red: 0%
+           green: 40%
+           blue: 40%
+           brightness: 50%
+           transition_length: 10ms
+
 
      on_play:
        - logger.log: "** MP Playback started! **"   
-       - delay: 150ms             
-       - light.turn_on:
-           id: led_circle           
-           red: 100%
-           green: 80%
-           blue: 60%
-           brightness: 50%
-           effect: "Twinkly"
+       - delay: 100ms  
+
+       - if:    
+          condition:
+            lambda: 'return id(light_effect) == 0;'
+          then:
+            - light.turn_on:        
+                id: led_circle           
+                red: 0%
+                green: 0%
+                blue: 40%
+                brightness: 50%
+                transition_length: 10ms
 
      on_pause:            
        - logger.log: "** MP Playback PAUSED! ** "
+       - light.turn_on:
+           id: led_circle           
+           effect: "Clear Swirl"
+       - delay: 1s
        - light.turn_off: led_circle
+       - lambda: 'id(light_effect) = 0;'
+
 
      on_idle:
-       - logger.log: "** MP Playback finished! ** "
-       - light.turn_off: led_circle
-
-
-
+       - logger.log: "** MP Playback finished! ******************************************************************** "     
+       - if:    
+          condition:
+            lambda: 'return id(light_effect) == 0;'
+          then:       
+            - light.turn_on:
+                id: led_circle           
+                effect: "Clear Swirl"
+            - delay: 1s
+            - light.turn_off: led_circle
+            - lambda: 'id(light_effect) = 0;'
 
 
 
 
 ################################################################################################################################
-
 voice_assistant:
   id: assist
   microphone: mic
@@ -170,47 +217,97 @@ voice_assistant:
   noise_suppression_level: 2
   auto_gain: 31dBFS
   volume_multiplier: 3.0
-  media_player: esps3_media_player  
+  media_player: circle2_media_player  
+
 
   on_error:
-    - logger.log: "** VA ERROR **"    
-    - micro_wake_word.start:  
-    - delay: 1s      
+    - logger.log: "** VA ERROR ************************"    
+    - micro_wake_word.start:     
+    - delay: 50ms
     - light.turn_on:
-        id: led_circle           
-        red: 70%
+        id: led_circle
+        red: 100%
         green: 0%
         blue: 0%
-        brightness: 40%
-        effect: "Error Swirl"
-    - delay: 3s
-    - light.turn_off:
-        id: led_circle 
+        brightness: 50%
+        transition_length: 10ms
+    - lambda: 'id(light_effect) = 2;'       
+
+    - delay: 150ms
+    - media_player.speaker.play_on_device_media_file:
+        media_file: error_sound
+        announcement: False
+
+    - delay: 2s
+    - light.turn_on:
+        id: led_circle           
+        effect: "Clear Swirl"
+    - delay: 1s
+    - light.turn_off: led_circle
+    - lambda: 'id(light_effect) = 0;'
+
 
 
   on_end:
-    - logger.log: "** VA END **"        
+    - logger.log: "** VA END ******************"        
     - light.turn_off: led_circle
+    - lambda: 'id(light_effect) = 0;'    
     - wait_until:
         not:
           voice_assistant.is_running:
     - micro_wake_word.start:      
 
-
-
   on_stt_end:
-    - logger.log: "** STT END **"
-    - light.turn_off: led_circle    
+    - logger.log: "** STT END **********************"
+    - lambda: 'id(light_effect) = 0;'
+
 
   on_tts_start:
-    - logger.log: "** TTS START **"   
-
+    - logger.log: "** TTS START ********************"   
 
 
 
 
 ###############################################################################################################################
 
+micro_wake_word:
+  id: mww
+  microphone:
+    microphone: mic
+    channels: 0
+    gain_factor: 4
+  vad:
+  models:
+    - model: okay_nabu
+      id: okay_nabu_model
+    - model: hey_jarvis
+      id: hey_jarvis_model
+    - model: alexa
+      id: alexa
+    - model: "https://raw.githubusercontent.com/esphome/micro-wake-word-models/refs/heads/main/models/v2/experiments/okay_computer.json"
+      id: okay_computer
+    - model: "https://raw.githubusercontent.com/esphome/micro-wake-word-models/refs/heads/main/models/v2/experiments/hey_home_assistant.json"
+      id: hey_home_assistant
+
+
+  on_wake_word_detected:
+    - logger.log: "** WAKE WORD DETECTED**"    
+    - lambda: 'id(light_effect) = 1;'       
+    - voice_assistant.start:
+        wake_word: !lambda return wake_word;
+
+    - media_player.speaker.play_on_device_media_file:
+        media_file: wake_sound
+        announcement: False
+                   
+    - delay: 50ms        
+    - light.turn_on:
+        id: led_circle           
+        effect: "Cyan Sweep"
+
+
+
+###############################################################################################################################
 switch:
 
   - platform: restart
@@ -243,54 +340,16 @@ switch:
           green: 100%
           blue: 20%
           brightness: 60%
-          effect: "Single Scan"
+          effect: "Slow Pulse"
       - delay: 3s
       - light.turn_off:
           id: led_circle 
 
 
 
- 
 
 
 ###############################################################################################################################
-
-micro_wake_word:
-  id: mww
-  microphone:
-    microphone: mic
-    channels: 0
-    gain_factor: 4
-  vad:
-  models:
-    - model: okay_nabu
-      id: okay_nabu_model
-    - model: hey_jarvis
-      id: hey_jarvis_model
-    - model: alexa
-      id: alexa
-    - model: "https://raw.githubusercontent.com/esphome/micro-wake-word-models/refs/heads/main/models/v2/experiments/okay_computer.json"
-      id: okay_computer
-    - model: "https://raw.githubusercontent.com/esphome/micro-wake-word-models/refs/heads/main/models/v2/experiments/hey_home_assistant.json"
-      id: hey_home_assistant
-
-
-  on_wake_word_detected:
-    - logger.log: "** WAKE WORD DETECTED**"       
-    - voice_assistant.start:
-        wake_word: !lambda return wake_word;
-
-    - media_player.speaker.play_on_device_media_file:
-        media_file: alert_sound
-        announcement: False
-    - delay: 450ms    
-    - light.turn_off: led_circle                    
-    - delay: 50ms        
-    - light.turn_on:
-        id: led_circle           
-        effect: "Listening Swirl"
-        brightness: 90%
-
 light:
   - platform: esp32_rmt_led_strip
     id: led_circle
@@ -328,48 +387,13 @@ light:
           update_interval: 2s
 
       - addressable_color_wipe:
-          name: "Listening Swirl"
+          name: "Clear Swirl"
           colors:
-            - red: 0%
-              green: 80%
-              blue: 80%
-              num_leds: 10
-              gradient: true
-            - red: 0%
-              green: 0%
-              blue: 0%
-              num_leds: 14            
-          add_led_interval: 60ms
-          reverse: false
-
-      - addressable_color_wipe:
-          name: Talking Swirl
-          colors:
-            - red: 50%
-              green: 0%
-              blue: 80%
-              num_leds: 12
-              gradient: true
             - red: 0%
               green: 0%
               blue: 0%
               num_leds: 12             
-          add_led_interval: 70ms
-          reverse: True
-
-      - addressable_color_wipe:
-          name: Error Swirl
-          colors:
-            - red: 60%
-              green: 0%
-              blue: 0%
-              num_leds: 14
-              gradient: true
-            - red: 0%
-              green: 0%
-              blue: 0%
-              num_leds: 10             
-          add_led_interval: 50ms
+          add_led_interval: 10ms
           reverse: True
 
       - addressable_color_wipe:
@@ -406,3 +430,31 @@ light:
           name: Twinkly
           twinkle_probability: 5%
           progress_interval: 4ms
+
+
+      - addressable_lambda:
+          name: "Cyan Sweep"
+          update_interval: 90ms
+          lambda: |-
+            static int pos = 0;
+            static int mov = 1;
+
+            // Fill strip with blue background
+            it.all() = Color(0, 0, 110);
+
+            // Draw 2-pixel cyan sweep
+            it[pos] = Color(0, 255, 255);
+            it[(pos + mov) % it.size()] = Color(0, 255, 255);
+
+            pos = pos + mov;
+
+            if (pos >= (it.size()-1)) {
+              pos = (it.size()-1);
+              mov = -1;
+            }
+
+            if (pos < 0) {
+              pos = 0;
+              mov = 1;
+            }
+            
