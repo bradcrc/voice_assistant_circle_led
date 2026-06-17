@@ -4,7 +4,8 @@
 
 Simple basic puck voice assistant for Home Assistant.  
 
-Watch a [Demo Video](https://youtu.be/T_yN41CJpmI)
+[![youtube](images/youtube.jpg)](https://youtu.be/T_yN41CJpmI)
+
 
 
 3D Printing - [STL Files](https://www.thingiverse.com/thing:7357076)
