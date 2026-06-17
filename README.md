@@ -8,7 +8,9 @@ Simple basic puck voice assistant for Home Assistant.
 
 
 
-3D Printing - [STL Files](https://www.thingiverse.com/thing:7357076)
+3D Printing - Download STL Files
+* [Thingiverse](https://www.thingiverse.com/thing:7357076)
+* [Printables](https://www.printables.com/model/1755450-home-assistant-voice-assistant-puck-with-ring-ligh)
 
 
 ## Required Parts
